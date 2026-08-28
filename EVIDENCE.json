@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "owner": "Lars Schouw",
+  "reviewed_on": "2026-08-28",
+  "license": "MIT",
+  "artifact": {
+    "id": "E-CODE-004",
+    "title": "Trading execution safety core",
+    "source_path": ".",
+    "publication_status": "public",
+    "public_url": "https://github.com/damian123/trading-execution-safety-typescript",
+    "verification_command": "npm ci && npm run verify",
+    "expected_test_count": 13,
+    "claims_supported": [
+      "market-data sequence integrity",
+      "stale-state latching",
+      "durable economic intent",
+      "explicit unknown submission outcomes",
+      "reconciliation before retry",
+      "deduplicated fill replay"
+    ],
+    "evidence_files": [
+      "README.md",
+      "docs/",
+      "src/",
+      "test/"
+    ],
+    "claim_boundary": "Synthetic market and order data; not a strategy, production feed handler, smart order router, or venue implementation."
+  }
+}
