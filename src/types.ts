@@ -47,7 +47,7 @@ export type TradableView =
   | {
       readonly tradable: false;
       readonly symbol: string;
-      readonly reason: "EMPTY" | "STALE" | "AGE_EXCEEDED";
+      readonly reason: "EMPTY" | "STALE" | "AGE_EXCEEDED" | "FUTURE_TIMESTAMP";
       readonly ageMs?: number;
     };
 
@@ -73,6 +73,15 @@ export interface Fill {
   readonly executionId: string;
   readonly quantity: bigint;
   readonly price: bigint;
+}
+
+export interface RetryReconciliationEvidence {
+  readonly submissionAttempt: number;
+  readonly checkedAtMs: number;
+  readonly openOrders: "ABSENT";
+  readonly executions: "ABSENT";
+  readonly positionEffect: "ABSENT";
+  readonly detail: string;
 }
 
 export interface OrderRecord extends OrderIntentInput {

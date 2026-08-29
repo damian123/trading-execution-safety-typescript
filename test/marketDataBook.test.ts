@@ -121,6 +121,16 @@ describe("SequencedOrderBook", () => {
     });
   });
 
+  it("blocks a receive timestamp that is in the future", () => {
+    const book = new SequencedOrderBook("BTC-PERP");
+    snapshot(book);
+    expect(book.tradableView(999, 100)).toEqual({
+      tradable: false,
+      symbol: "BTC-PERP",
+      reason: "FUTURE_TIMESTAMP",
+    });
+  });
+
   it("rejects crossed snapshots and latches stale on crossed deltas", () => {
     const invalid = new SequencedOrderBook("BTC-PERP");
     expect(() =>

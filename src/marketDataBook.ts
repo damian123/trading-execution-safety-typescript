@@ -156,7 +156,14 @@ export class SequencedOrderBook {
     if (this.state === "STALE") {
       return { tradable: false, symbol: this.symbol, reason: "STALE" };
     }
-    const ageMs = Math.max(0, nowMs - this.receivedAtMs);
+    if (this.receivedAtMs > nowMs) {
+      return {
+        tradable: false,
+        symbol: this.symbol,
+        reason: "FUTURE_TIMESTAMP",
+      };
+    }
+    const ageMs = nowMs - this.receivedAtMs;
     if (ageMs > maximumAgeMs) {
       return { tradable: false, symbol: this.symbol, reason: "AGE_EXCEEDED", ageMs };
     }

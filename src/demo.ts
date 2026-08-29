@@ -57,7 +57,14 @@ try {
 
 journal.authorizeRetryAfterReconciliation(
   intent.clientOrderId,
-  "client ID absent from open orders, recent executions, and position change",
+  {
+    submissionAttempt: 1,
+    checkedAtMs: 1_100,
+    openOrders: "ABSENT",
+    executions: "ABSENT",
+    positionEffect: "ABSENT",
+    detail: "client ID absent from authoritative venue and position queries",
+  },
 );
 journal.markSubmissionStarted(intent.clientOrderId);
 journal.acknowledge(intent.clientOrderId, "venue-9001");

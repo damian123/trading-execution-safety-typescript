@@ -12,9 +12,9 @@ A missing market-data increment can make a locally maintained order book incorre
 - No tradable view is returned until a new valid snapshot is installed.
 - An order whose submission result cannot be proved becomes `UNKNOWN`.
 - The same economic intent cannot be submitted again while it is `UNKNOWN`.
-- A retry becomes possible only after recorded reconciliation evidence moves the original intent back to an eligible state.
+- A retry becomes possible only after structured evidence for the current submission attempt records authoritative order, execution, and position checks as absent.
 - Fills are accepted during `SUBMITTING` or `UNKNOWN` because private-stream evidence can arrive before an acknowledgement.
-- Execution IDs deduplicate fill replay.
+- Execution IDs deduplicate only byte-for-byte economic replay; changed quantity or price is rejected, including after completion.
 
 ## Consequences
 

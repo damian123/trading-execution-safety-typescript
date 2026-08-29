@@ -14,10 +14,12 @@ A hedging service consumes sequenced perpetual-futures order-book messages and s
 - Apply strictly sequenced deltas and ignore old messages without mutating state.
 - Latch the book stale on gaps, invalid levels, or a crossed market.
 - Block trading when the last valid update exceeds a declared age limit.
+- Block a book whose receive timestamp is ahead of the evaluation clock.
 - Persist one client order per economic intent before submission.
 - Represent a timed-out submission as `UNKNOWN`, not failed.
-- Block blind retry and require recorded reconciliation evidence.
-- Accept fills before acknowledgements, deduplicate execution replay, and reject overfills.
+- Block blind retry and require attempt-bound evidence that orders, executions, and position effects are absent.
+- Accept fills before acknowledgements, accept exact execution replay even after completion, and reject conflicting replay or overfills.
+- Keep the first acknowledged venue order ID immutable.
 - Preserve an ordered audit trail of intent and execution-state changes.
 
 ## Architecture
@@ -51,19 +53,22 @@ TypeScript, Node.js, Vitest, strict compiler options, exact integer quantities a
 4. Recovery from stale requires a fresh snapshot.
 5. An aged book is not tradable even if its sequence is intact.
 6. Crossed snapshots are rejected and crossed deltas latch stale.
-7. Repeating the same intent is idempotent; changed payloads and duplicate economic intents are rejected.
-8. A timed-out submission cannot be sent again without reconciliation evidence.
-9. A fill before acknowledgement is accepted and its replay is ignored.
-10. An overfill is rejected without mutating accepted fill state.
+7. Future-dated receive times cannot publish a tradable view.
+8. Repeating the same canonically encoded intent is idempotent; delimiter collisions and changed payloads are rejected.
+9. A timed-out submission cannot be sent again without structured evidence for the current attempt.
+10. A fill before acknowledgement is accepted and its exact replay is ignored.
+11. An exact fill replay remains idempotent after `FILLED`, while changed quantity or price is rejected.
+12. An overfill is rejected without mutating accepted fill state.
+13. Once set, a venue order ID cannot be replaced by a later acknowledgement.
 
 ## Run it
 
 ```bash
-npm install
+npm ci
 npm run verify
 ```
 
-`verify` runs strict TypeScript checking, thirteen automated tests, and a structured executable walkthrough.
+`verify` runs strict TypeScript checking, seventeen automated tests, and a structured executable walkthrough.
 
 ## Repository shape
 
@@ -86,3 +91,7 @@ docs/                  architecture decision record
 ## Non-goals
 
 No real exchange, market data, strategy, custody, account, key, or client information is used. This is not a matching engine, smart order router, production feed handler, performance benchmark, or investment strategy. It makes no claim about any employer's or venue's private architecture or technology stack.
+
+## Provenance
+
+Artifact owner: Lars Schouw. Repository account: [`damian123`](https://github.com/damian123). Commits may use the display name Damian; `EVIDENCE.json` records this mapping explicitly.
