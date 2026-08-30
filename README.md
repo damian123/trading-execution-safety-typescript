@@ -1,28 +1,8 @@
-# Trading execution safety core
+# Trading execution safety
 
-**Status:** implemented synthetic TypeScript demonstration.
+A hedging service that consumes sequenced perpetual-futures book updates must stop trading when the local book is untrustworthy, and it must not retry a venue order whose acknowledgement was lost.
 
-A small executable trading-systems exercise that proves two safety properties: a locally maintained order book stops being tradable when sequence integrity is lost, and an uncertain venue submission cannot be retried blindly.
-
-## Scenario
-
-A hedging service consumes sequenced perpetual-futures order-book messages and submits child orders to a venue. Messages may be duplicated or skipped. A connection can close after an order has been written but before the acknowledgement arrives. Private fills can arrive before the order acknowledgement and may be replayed.
-
-## Demonstrated outcome
-
-- Build a two-sided book from a validated snapshot.
-- Apply strictly sequenced deltas and ignore old messages without mutating state.
-- Latch the book stale on gaps, invalid levels, or a crossed market.
-- Block trading when the last valid update exceeds a declared age limit.
-- Block a book whose receive timestamp is ahead of the evaluation clock.
-- Persist one client order per economic intent before submission.
-- Represent a timed-out submission as `UNKNOWN`, not failed.
-- Block blind retry and require attempt-bound evidence that orders, executions, and position effects are absent.
-- Accept fills before acknowledgements, accept exact execution replay even after completion, and reject conflicting replay or overfills.
-- Keep the first acknowledged venue order ID immutable.
-- Preserve an ordered audit trail of intent and execution-state changes.
-
-## Architecture
+Portfolio project using fictional data. It is not connected to an employer, client, or production system.
 
 ```mermaid
 flowchart LR
@@ -39,59 +19,40 @@ flowchart LR
     J -->|found| H
 ```
 
-The key decision is documented in [ADR 0001](docs/0001-explicit-invalid-and-unknown-states.md).
+The decision record is [ADR 0001](docs/0001-explicit-invalid-and-unknown-states.md).
 
-## Implemented stack
+## Capabilities
 
-TypeScript, Node.js, Vitest, strict compiler options, exact integer quantities and prices, and deterministic in-memory state. The boundaries are deliberately small enough for an interview walkthrough. A production version would use a durable transactional journal, venue-specific sequence rules, exact decimal scaling by instrument, authenticated operator actions, and fenced ownership for order submission.
+- Build a two-sided book from a validated snapshot and apply strictly sequenced deltas.
+- Ignore old or duplicate messages without mutating state; latch `STALE` on a gap, invalid level, or crossed market.
+- Refuse a tradable view when the last valid update is too old or its receive timestamp is ahead of the clock.
+- Persist one client order per economic intent before any venue write.
+- Treat a timed-out submission as `UNKNOWN`, not failed, and require attempt-bound evidence that the order, fills, and position effect are absent before retry.
 
-## Acceptance scenarios
-
-1. A valid snapshot and next delta publish the expected best bid and ask.
-2. A duplicated or regressing delta is ignored without corrupting the book.
-3. A sequence gap latches stale and prevents a tradable view.
-4. Recovery from stale requires a fresh snapshot.
-5. An aged book is not tradable even if its sequence is intact.
-6. Crossed snapshots are rejected and crossed deltas latch stale.
-7. Future-dated receive times cannot publish a tradable view.
-8. Repeating the same canonically encoded intent is idempotent; delimiter collisions and changed payloads are rejected.
-9. A timed-out submission cannot be sent again without structured evidence for the current attempt.
-10. A fill before acknowledgement is accepted and its exact replay is ignored.
-11. An exact fill replay remains idempotent after `FILLED`, while changed quantity or price is rejected.
-12. An overfill is rejected without mutating accepted fill state.
-13. Once set, a venue order ID cannot be replaced by a later acknowledgement.
-
-## Run it
+## Run
 
 ```bash
 npm ci
 npm run verify
 ```
 
-`verify` runs strict TypeScript checking, seventeen automated tests, and a structured executable walkthrough.
+`verify` runs strict TypeScript, seventeen tests, and a structured walkthrough of a book gap plus an uncertain submission. Node.js 22 is the CI runtime.
 
-## Repository shape
+## Verification
 
-```text
-src/marketDataBook.ts  snapshot, delta, sequence, crossed-book, and freshness rules
-src/orderJournal.ts    durable-intent model, unknown outcome, retry, fill, and audit rules
-src/types.ts           discriminated unions and exact-value domain contracts
-src/demo.ts            executable gap and uncertain-submission walkthrough
-test/                  market-data and order-state acceptance tests
-docs/                  architecture decision record
-```
+GitHub Actions on push and pull request runs `npm ci`, `npm run verify`, and confirms `MANIFEST.sha256` against `scripts/build-evidence-manifest.sh`.
 
-## Interview use
+Prices and quantities are exact integers (`bigint`). Discriminated unions make `STALE` and `UNKNOWN` ordinary states rather than missing-field accidents.
 
-- Explain why an order timeout is not evidence of failure.
-- Show how discriminated unions make invalid and uncertain states unavoidable.
-- Discuss where persistence, fencing, venue-specific protocol rules, and observability belong in production.
-- Extend the exercise with cancellation, parent/child routing, position reconciliation, or a deterministic simulated venue if requested.
+## Design
 
-## Non-goals
+- Recovering from `STALE` requires a fresh snapshot. Deltas cannot patch a gapped book.
+- Repeating the same canonically encoded intent is idempotent. Delimiter collisions and changed payloads are rejected.
+- Fills may arrive before the acknowledgement. Exact execution replay is ignored even after `FILLED`; a changed quantity or price is rejected, including overfills.
+- The first acknowledged venue order ID is immutable.
 
-No real exchange, market data, strategy, custody, account, key, or client information is used. This is not a matching engine, smart order router, production feed handler, performance benchmark, or investment strategy. It makes no claim about any employer's or venue's private architecture or technology stack.
+`src/marketDataBook.ts` owns sequence and freshness. `src/orderJournal.ts` owns intent, unknown outcomes, fills, and the audit trail.
 
-## Provenance
+## Limitations
 
-Artifact owner: Lars Schouw. Repository account: [`damian123`](https://github.com/damian123). Commits may use the display name Damian; `EVIDENCE.json` records this mapping explicitly.
+In-memory journal, no live venue, no matching engine. See [LIMITATIONS.md](LIMITATIONS.md).
